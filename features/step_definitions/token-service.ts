@@ -45,6 +45,20 @@ async function getAccountBalance(accountId: AccountId) {
   return await query.execute(client);
 }
 
+async function associateTokenAccount(accountIndex: number, tokenId: any) {
+  //Associate a token to an account and freeze the unsigned transaction for signing
+  const txTokenAssociate1 = await new TokenAssociateTransaction()
+    .setAccountId(accountIds[accountIndex])
+    .setTokenIds([tokenId]) //Fill in the token ID
+    .freezeWith(client);
+
+  //Sign with the private key of the account that is being associated to a token 
+  const signTxTokenAssociate1 = await txTokenAssociate1.sign(privateKeys[accountIndex]);
+
+  //Submit the transaction to a Hedera network    
+  await signTxTokenAssociate1.execute(client);
+}
+
 Given(/^A Hedera account with more than (\d+) hbar$/, async function (expectedBalance: number) {
   const { accountId } = await setupAccount(0, true);
   console.log("Admin Account:", accountId.toString());
@@ -229,17 +243,7 @@ Given(/^The first account holds (\d+) HTT tokens$/, async function (amount: numb
   let firstAccountBalance: any = await getAccountBalance(accountIds[1]);
   firstAccountBalance = firstAccountBalance.tokens?._map.get(this.tokenId.toString())?.toNumber() || 0;
   
-  //Associate a token to an account and freeze the unsigned transaction for signing
-  const txTokenAssociate = await new TokenAssociateTransaction()
-    .setAccountId(accountIds[1])
-    .setTokenIds([this.tokenId]) //Fill in the token ID
-    .freezeWith(client);
-
-  //Sign with the private key of the account that is being associated to a token 
-  const signTxTokenAssociate = await txTokenAssociate.sign(privateKeys[1]);
-
-  //Submit the transaction to a Hedera network    
-  await signTxTokenAssociate.execute(client);
+  await associateTokenAccount(1, this.tokenId);
 
   if (currentBalance >= amount && firstAccountBalance < amount && amount > 0) {
     // Need to transfer from treasury to second account
@@ -266,17 +270,7 @@ Given(/^The second account holds (\d+) HTT tokens$/, async function (amount: num
   let secondAccountBalance: any = await getAccountBalance(accountIds[2]);
   secondAccountBalance = secondAccountBalance.tokens?._map.get(this.tokenId.toString())?.toNumber() || 0;
   
-  //Associate a token to an account and freeze the unsigned transaction for signing
-  const txTokenAssociate = await new TokenAssociateTransaction()
-    .setAccountId(accountIds[2])
-    .setTokenIds([this.tokenId]) //Fill in the token ID
-    .freezeWith(client);
-
-  //Sign with the private key of the account that is being associated to a token 
-  const signTxTokenAssociate = await txTokenAssociate.sign(privateKeys[2]);
-
-  //Submit the transaction to a Hedera network    
-  await signTxTokenAssociate.execute(client); 
+  await associateTokenAccount(2, this.tokenId); 
 
   if (currentBalance >= amount && secondAccountBalance < amount && amount > 0) {
     // Need to transfer from treasury to second account
@@ -341,17 +335,7 @@ Given(/^A first hedera account with more than (\d+) hbar and (\d+) HTT tokens$/,
    const balance = await getAccountBalance(accountIds[1]);
    const currentBalance = balance.tokens?._map.get(this.tokenId.toString())?.toNumber() || 0;
  
-   //Associate a token to an account and freeze the unsigned transaction for signing
-   const txTokenAssociate = await new TokenAssociateTransaction()
-     .setAccountId(accountIds[1])
-     .setTokenIds([this.tokenId]) //Fill in the token ID
-     .freezeWith(client);
- 
-   //Sign with the private key of the account that is being associated to a token 
-   const signTxTokenAssociate = await txTokenAssociate.sign(privateKeys[1]);
- 
-   //Submit the transaction to a Hedera network    
-   await signTxTokenAssociate.execute(client);
+   await associateTokenAccount(1, this.tokenId);
  
    if (currentBalance !== tokenAmount) {
      // Transfer needed
@@ -379,17 +363,7 @@ Given(/^A second Hedera account with (\d+) hbar and (\d+) HTT tokens$/, async fu
    const balance = await getAccountBalance(accountIds[2]);
    const currentBalance = balance.tokens?._map.get(this.tokenId.toString())?.toNumber() || 0;
  
-   //Associate a token to an account and freeze the unsigned transaction for signing
-   const txTokenAssociate = await new TokenAssociateTransaction()
-     .setAccountId(accountIds[2])
-     .setTokenIds([this.tokenId]) //Fill in the token ID
-     .freezeWith(client);
- 
-   //Sign with the private key of the account that is being associated to a token 
-   const signTxTokenAssociate = await txTokenAssociate.sign(privateKeys[2]);
- 
-   //Submit the transaction to a Hedera network    
-   await signTxTokenAssociate.execute(client);
+   await associateTokenAccount(2, this.tokenId);
  
    if (currentBalance !== tokenAmount) {
      // Transfer needed
@@ -416,17 +390,7 @@ Given(/^A third Hedera account with (\d+) hbar and (\d+) HTT tokens$/, async fun
   const balance = await getAccountBalance(accountIds[3]);
   const currentBalance = balance.tokens?._map.get(this.tokenId.toString())?.toNumber() || 0;
 
-  //Associate a token to an account and freeze the unsigned transaction for signing
-  const txTokenAssociate = await new TokenAssociateTransaction()
-    .setAccountId(accountIds[3])
-    .setTokenIds([this.tokenId]) //Fill in the token ID
-    .freezeWith(client);
-
-  //Sign with the private key of the account that is being associated to a token 
-  const signTxTokenAssociate = await txTokenAssociate.sign(privateKeys[3]);
-
-  //Submit the transaction to a Hedera network    
-  await signTxTokenAssociate.execute(client);
+  await associateTokenAccount(3, this.tokenId);
 
   if (currentBalance !== tokenAmount) {
     // Transfer needed
@@ -453,17 +417,7 @@ Given(/^A fourth Hedera account with (\d+) hbar and (\d+) HTT tokens$/, async fu
   const balance = await getAccountBalance(accountIds[4]);
   const currentBalance = balance.tokens?._map.get(this.tokenId.toString())?.toNumber() || 0;
   
-  //Associate a token to an account and freeze the unsigned transaction for signing
-  const txTokenAssociate = await new TokenAssociateTransaction()
-    .setAccountId(accountIds[4])
-    .setTokenIds([this.tokenId]) //Fill in the token ID
-    .freezeWith(client);
-
-  //Sign with the private key of the account that is being associated to a token 
-  const signTxTokenAssociate = await txTokenAssociate.sign(privateKeys[4]);
-
-  //Submit the transaction to a Hedera network    
-  await signTxTokenAssociate.execute(client);
+  await associateTokenAccount(4, this.tokenId);
 
   if (currentBalance !== tokenAmount) {
     // Transfer needed
@@ -486,56 +440,36 @@ Given(/^A fourth Hedera account with (\d+) hbar and (\d+) HTT tokens$/, async fu
 When(/^A transaction is created to transfer (\d+) HTT tokens out of the first and second account and (\d+) HTT tokens into the third account and (\d+) HTT tokens into the fourth account$/, async function (outAmount: number, inAmount1: number, inAmount2: number) {
   const balance1 = await getAccountBalance(accountIds[1]);
   const currentBalance1 = balance1.tokens?._map.get(this.tokenId.toString())?.toNumber() || 0;
-
   console.log("Account 1 HTT balance: ", currentBalance1);
+  
+  if (currentBalance1 > outAmount) {
+    await associateTokenAccount(1, this.tokenId); 
+    const transaction1 = await new TransferTransaction()
+      .addTokenTransfer(this.tokenId, accountIds[1], -outAmount)
+      .addTokenTransfer(this.tokenId, accountIds[3], inAmount1)
+      .addTokenTransfer(this.tokenId, accountIds[4], inAmount1)
+      .freezeWith(client);
+    
+    const signedTx1 = await transaction1.sign(privateKeys[1]);
+    const txResponse1 = await signedTx1.execute(client);
+    //await txResponse1.getReceipt(client);
+  }  
 
   const balance2 = await getAccountBalance(accountIds[2]);
   const currentBalance2 = balance2.tokens?._map.get(this.tokenId.toString())?.toNumber() || 0;
-
   console.log("Account 2 HTT balance: ", currentBalance2);
-  
-  //Associate a token to an account and freeze the unsigned transaction for signing
-  const txTokenAssociate1 = await new TokenAssociateTransaction()
-    .setAccountId(accountIds[1])
-    .setTokenIds([this.tokenId]) //Fill in the token ID
-    .freezeWith(client);
 
-  //Sign with the private key of the account that is being associated to a token 
-  const signTxTokenAssociate1 = await txTokenAssociate1.sign(privateKeys[1]);
-
-  //Submit the transaction to a Hedera network    
-  await signTxTokenAssociate1.execute(client);
-  
-  const transaction1 = await new TransferTransaction()
-    .addTokenTransfer(this.tokenId, accountIds[1], -outAmount)
-    .addTokenTransfer(this.tokenId, accountIds[3], inAmount1)
-    .addTokenTransfer(this.tokenId, accountIds[4], inAmount1)
-    .freezeWith(client);
-  
-  const signedTx1 = await transaction1.sign(privateKeys[1]);
-  const txResponse1 = await signedTx1.execute(client);
-  //await txResponse1.getReceipt(client);
-
-  //Associate a token to an account and freeze the unsigned transaction for signing
-  const txTokenAssociate2 = await new TokenAssociateTransaction()
-    .setAccountId(accountIds[1])
-    .setTokenIds([this.tokenId]) //Fill in the token ID
-    .freezeWith(client);
-
-  //Sign with the private key of the account that is being associated to a token 
-  const signTxTokenAssociate2 = await txTokenAssociate2.sign(privateKeys[1]);
-
-  //Submit the transaction to a Hedera network    
-  await signTxTokenAssociate2.execute(client);
-
-  const transaction2 = await new TransferTransaction()
-    .addTokenTransfer(this.tokenId, accountIds[2], -outAmount)
-    .addTokenTransfer(this.tokenId, accountIds[4], inAmount2 - inAmount1)
-    .freezeWith(client);
-  
-  const signedTx2 = await transaction2.sign(privateKeys[2]);
-  const txResponse2 = await signedTx2.execute(client);
-  //await txResponse2.getReceipt(client);
+  if (currentBalance2 > outAmount) {
+    await associateTokenAccount(2, this.tokenId);
+    const transaction2 = await new TransferTransaction()
+      .addTokenTransfer(this.tokenId, accountIds[2], -outAmount)
+      .addTokenTransfer(this.tokenId, accountIds[4], inAmount2 - inAmount1)
+      .freezeWith(client);
+    
+    const signedTx2 = await transaction2.sign(privateKeys[2]);
+    const txResponse2 = await signedTx2.execute(client);
+    //await txResponse2.getReceipt(client);
+  }
 });
 
 Then(/^The third account holds (\d+) HTT tokens$/, async function (expectedAmount: number) {
