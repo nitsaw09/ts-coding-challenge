@@ -292,6 +292,7 @@ Given(/^The second account holds (\d+) HTT tokens$/, async function (amount: num
 
   const updateBalance = await getAccountBalance(accountIds[2]);
   currentBalance = updateBalance.tokens?._map.get(this.tokenId.toString())?.toNumber() || 0;
+  console.log("Account 2 balance update: ", currentBalance);
   assert.strictEqual(currentBalance, amount);
 });
 
@@ -306,11 +307,11 @@ When(/^The first account creates a transaction to transfer (\d+) HTT tokens to t
   const signedTx = await transaction.sign(privateKeys[1]);
   const txResponse = await signedTx.execute(client);
   const receipt = await txResponse.getReceipt(client);
-  console.log("Transaction status: " + receipt.status.toString());
+  console.log("Transaction status: " + receipt?.status?.toString());
 });
 
 When(/^The first account submits the transaction$/, async function () {
-  console.log("First account submits the transaction:", transaction.transactionId.toString());
+  console.log("First account submits the transaction:", transaction?.transactionId?.toString());
 });
 
 When(/^The second account creates a transaction to transfer (\d+) HTT tokens to the first account$/, async function (amount: number) {
@@ -326,20 +327,86 @@ When(/^The second account creates a transaction to transfer (\d+) HTT tokens to 
 Then(/^The first account has paid for the transaction fee$/, async function () {
   // This is a simplification - in a real implementation, you would need to
   // check the record of the transaction to see who paid the fee
-  assert.strictEqual(transactionFeePayerId.toString(), accountIds[1].toString());
+  assert.strictEqual(transactionFeePayerId?.toString(), accountIds[1]?.toString());
 });
 
 Given(/^A first hedera account with more than (\d+) hbar and (\d+) HTT tokens$/, async function (hbarAmount: number, tokenAmount: number) {
   const { accountId } = await setupAccount(1);
   console.log("Account1:", accountId.toString());
   // Check HBAR balance
-  const balance = await getAccountBalance(accountId);
-  assert.ok(balance.hbars.toBigNumber().toNumber() > hbarAmount);
+  const hbarBalance = await getAccountBalance(accountId);
+  assert.ok(hbarBalance.hbars.toBigNumber().toNumber() > hbarAmount);
+
+   // Setup token balance (similar to second account)
+   const balance = await getAccountBalance(accountIds[1]);
+   const currentBalance = balance.tokens?._map.get(this.tokenId.toString())?.toNumber() || 0;
+ 
+   //Associate a token to an account and freeze the unsigned transaction for signing
+   const txTokenAssociate = await new TokenAssociateTransaction()
+     .setAccountId(accountIds[1])
+     .setTokenIds([this.tokenId]) //Fill in the token ID
+     .freezeWith(client);
+ 
+   //Sign with the private key of the account that is being associated to a token 
+   const signTxTokenAssociate = await txTokenAssociate.sign(privateKeys[1]);
+ 
+   //Submit the transaction to a Hedera network    
+   await signTxTokenAssociate.execute(client);
+ 
+   if (currentBalance !== tokenAmount) {
+     // Transfer needed
+     const transferAmount = tokenAmount - currentBalance;
+     
+     if (transferAmount > 0) {
+       // Need to transfer from treasury to third account
+       const transaction = await new TransferTransaction()
+         .addTokenTransfer(this.tokenId, accountIds[0], -transferAmount)
+         .addTokenTransfer(this.tokenId, accountIds[1], transferAmount)
+         .freezeWith(client);
+       
+       const signedTx = await transaction.sign(privateKeys[0]);
+       const txResponse = await signedTx.execute(client);
+       await txResponse.getReceipt(client);
+     }
+   }
 });
 
 Given(/^A second Hedera account with (\d+) hbar and (\d+) HTT tokens$/, async function (hbarAmount: number, tokenAmount: number) {
-  const { accountId } = await setupAccount(2);
-  console.log("Account2:", accountId.toString());
+  await setupAccount(2);
+  console.log("Account2:", accountIds[2].toString());
+
+   // Setup token balance (similar to second account)
+   const balance = await getAccountBalance(accountIds[2]);
+   const currentBalance = balance.tokens?._map.get(this.tokenId.toString())?.toNumber() || 0;
+ 
+   //Associate a token to an account and freeze the unsigned transaction for signing
+   const txTokenAssociate = await new TokenAssociateTransaction()
+     .setAccountId(accountIds[2])
+     .setTokenIds([this.tokenId]) //Fill in the token ID
+     .freezeWith(client);
+ 
+   //Sign with the private key of the account that is being associated to a token 
+   const signTxTokenAssociate = await txTokenAssociate.sign(privateKeys[2]);
+ 
+   //Submit the transaction to a Hedera network    
+   await signTxTokenAssociate.execute(client);
+ 
+   if (currentBalance !== tokenAmount) {
+     // Transfer needed
+     const transferAmount = tokenAmount - currentBalance;
+     
+     if (transferAmount > 0) {
+       // Need to transfer from treasury to third account
+       const transaction = await new TransferTransaction()
+         .addTokenTransfer(this.tokenId, accountIds[0], -transferAmount)
+         .addTokenTransfer(this.tokenId, accountIds[2], transferAmount)
+         .freezeWith(client);
+       
+       const signedTx = await transaction.sign(privateKeys[0]);
+       const txResponse = await signedTx.execute(client);
+       await txResponse.getReceipt(client);
+     }
+   }
 });
 
 Given(/^A third Hedera account with (\d+) hbar and (\d+) HTT tokens$/, async function (hbarAmount: number, tokenAmount: number) {
@@ -417,6 +484,28 @@ Given(/^A fourth Hedera account with (\d+) hbar and (\d+) HTT tokens$/, async fu
 });
 
 When(/^A transaction is created to transfer (\d+) HTT tokens out of the first and second account and (\d+) HTT tokens into the third account and (\d+) HTT tokens into the fourth account$/, async function (outAmount: number, inAmount1: number, inAmount2: number) {
+  const balance1 = await getAccountBalance(accountIds[1]);
+  const currentBalance1 = balance1.tokens?._map.get(this.tokenId.toString())?.toNumber() || 0;
+
+  console.log("Account 1 HTT balance: ", currentBalance1);
+
+  const balance2 = await getAccountBalance(accountIds[2]);
+  const currentBalance2 = balance2.tokens?._map.get(this.tokenId.toString())?.toNumber() || 0;
+
+  console.log("Account 2 HTT balance: ", currentBalance2);
+  
+  //Associate a token to an account and freeze the unsigned transaction for signing
+  const txTokenAssociate1 = await new TokenAssociateTransaction()
+    .setAccountId(accountIds[1])
+    .setTokenIds([this.tokenId]) //Fill in the token ID
+    .freezeWith(client);
+
+  //Sign with the private key of the account that is being associated to a token 
+  const signTxTokenAssociate1 = await txTokenAssociate1.sign(privateKeys[1]);
+
+  //Submit the transaction to a Hedera network    
+  await signTxTokenAssociate1.execute(client);
+  
   const transaction1 = await new TransferTransaction()
     .addTokenTransfer(this.tokenId, accountIds[1], -outAmount)
     .addTokenTransfer(this.tokenId, accountIds[3], inAmount1)
@@ -425,6 +514,19 @@ When(/^A transaction is created to transfer (\d+) HTT tokens out of the first an
   
   const signedTx1 = await transaction1.sign(privateKeys[1]);
   const txResponse1 = await signedTx1.execute(client);
+  //await txResponse1.getReceipt(client);
+
+  //Associate a token to an account and freeze the unsigned transaction for signing
+  const txTokenAssociate2 = await new TokenAssociateTransaction()
+    .setAccountId(accountIds[1])
+    .setTokenIds([this.tokenId]) //Fill in the token ID
+    .freezeWith(client);
+
+  //Sign with the private key of the account that is being associated to a token 
+  const signTxTokenAssociate2 = await txTokenAssociate2.sign(privateKeys[1]);
+
+  //Submit the transaction to a Hedera network    
+  await signTxTokenAssociate2.execute(client);
 
   const transaction2 = await new TransferTransaction()
     .addTokenTransfer(this.tokenId, accountIds[2], -outAmount)
@@ -433,6 +535,7 @@ When(/^A transaction is created to transfer (\d+) HTT tokens out of the first an
   
   const signedTx2 = await transaction2.sign(privateKeys[2]);
   const txResponse2 = await signedTx2.execute(client);
+  //await txResponse2.getReceipt(client);
 });
 
 Then(/^The third account holds (\d+) HTT tokens$/, async function (expectedAmount: number) {
